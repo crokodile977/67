@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroScan — AI-ассистент врача-рентгенолога</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --blue: #1a56db;
+            --blue-light: #e8f0fe;
+            --green: #0d9488;
+            --green-light: #ecfdf5;
+            --black: #1a1a2e;
+            --gray: #64748b;
+            --gray-light: #f8fafc;
+            --white: #ffffff;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Ubuntu', sans-serif;
+            color: var(--black);
+            background: linear-gradient(180deg, #f0f7ff 0%, #ffffff 50%, #f0fdf9 100%);
+            background-attachment: fixed;
+            line-height: 1.7;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        #lava-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            pointer-events: none;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+        section { padding: 80px 0; position: relative; }
+        h1, h2, h3 { font-weight: 700; line-height: 1.2; }
+        h1 { font-size: clamp(28px, 4vw, 44px); }
+        h2 { font-size: clamp(24px, 3vw, 34px); margin-bottom: 16px; }
+        h3 { font-size: clamp(18px, 2vw, 22px); margin-bottom: 8px; }
+        p { color: var(--gray); font-size: clamp(15px, 1.8vw, 17px); }
+
+        /* БЕЛЫЕ ОСТРОВКИ */
+        .text-island {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(8px);
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            margin-bottom: 16px;
+        }
+
+        .text-island-sm {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(6px);
+            padding: 16px;
+            border-radius: 8px;
+        }
+
+        .fade-in { opacity: 0; transform: translateY(30px); transition: opacity 0.7s ease, transform 0.7s ease; }
+        .fade-in.visible { opacity: 1; transform: translateY(0); }
+
+        header {
+            position: fixed; top: 0; left: 0; right: 0;
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            z-index: 1000; padding: 14px 0;
+        }
+        .header-inner { display: flex; align-items: center; justify-content: space-between; }
+        .logo { font-size: 20px; font-weight: 700; color: var(--blue); text-decoration: none; }
+        .logo span { color: var(--black); }
+        .header-tabs { display: flex; gap: 8px; }
+        .tab-btn {
+            padding: 6px 14px; border: 1px solid var(--border); background: var(--white);
+            border-radius: 20px; font-family: 'Ubuntu', sans-serif; font-size: 13px;
+            cursor: pointer; transition: all 0.3s;
+        }
+        .tab-btn.active, .tab-btn:hover { background: var(--blue); color: var(--white); border-color: var(--blue); }
+        .header-cta {
+            padding: 8px 20px; background: var(--blue); color: var(--white); border: none;
+            border-radius: 6px; font-family: 'Ubuntu', sans-serif; font-size: 14px; font-weight: 500;
+            cursor: pointer; text-decoration: none; transition: background 0.3s;
+        }
+        .header-cta:hover { background: #1240a8; }
+
+        .hero { padding: 160px 0 80px; }
+        .hero-content { max-width: 900px; }
+        .hero-badge {
+            display: inline-block; padding: 4px 12px; background: var(--green-light);
+            color: var(--green); border-radius: 20px; font-size: 13px; font-weight: 500; margin-bottom: 20px;
+        }
+        .hero h1 { margin-bottom: 20px; }
+        .hero p { font-size: clamp(16px, 2vw, 19px); margin-bottom: 32px; max-width: 600px; }
+        .btn-primary {
+            display: inline-block; padding: 14px 32px; background: var(--blue); color: var(--white);
+            border: none; border-radius: 8px; font-family: 'Ubuntu', sans-serif;
+            font-size: 16px; font-weight: 500; cursor: pointer; text-decoration: none; transition: all 0.3s;
+        }
+        .btn-primary:hover { background: #1240a8; transform: translateY(-2px); box-shadow: 0 8px 25px rgba(26,86,219,0.3); }
+        .btn-note { display: block; margin-top: 10px; font-size: 13px; color: var(--gray); font-style: italic; }
+
+        .slider-wrapper {
+            max-width: 700px; margin: 40px auto 0; position: relative;
+            border-radius: 12px; overflow: hidden; border: 1px solid var(--border);
+            box-shadow: 0 4px 30px rgba(0,0,0,0.08); background: var(--white);
+        }
+        .slider-container { position: relative; width: 100%; height: 350px; background: #1a1a2e; overflow: hidden; }
+	.slider-img-before, .slider-img-after {
+	    position: absolute;
+	    top: 0; left: 0;
+	    width: 100%; height: 100%;
+	    overflow: hidden;
+	}
+	
+	.slider-img-after {
+	    clip-path: inset(0 50% 0 0);
+	    z-index: 2;
+	}
+	
+	.slider-img-before {
+	    z-index: 1;
+	}
+	
+	.slider-photo {
+	    width: 100%;
+	    height: 100%;
+	    object-fit: cover;       /* заполняет контейнер, обрезая лишнее */
+	    object-position: center; /* центрирует картинку */
+	    display: block;
+	    user-select: none;
+	    pointer-events: none;    /* чтобы мышка не «цеплялась» за картинку при слайде */
+	}
+        .slider-label { position: absolute; bottom: 12px; padding: 4px 12px; background: rgba(0,0,0,0.7); color: #fff; font-size: 12px; border-radius: 4px; }
+        .slider-label.left { left: 12px; } .slider-label.right { right: 12px; }
+        .slider-handle { position: absolute; top: 0; bottom: 0; left: 50%; width: 3px; background: var(--white); cursor: ew-resize; z-index: 10; }
+        .slider-handle::after {
+            content: '⟷'; position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); width: 36px; height: 36px;
+            background: var(--white); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        .slider-input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: ew-resize; z-index: 20; }
+        .xray-placeholder { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #8899aa; font-size: 14px; }
+        .xray-placeholder .icon { font-size: 48px; margin-bottom: 8px; }
+        .highlight-zone {
+            position: absolute; width: 60px; height: 60px; border: 2px solid #ef4444;
+            border-radius: 50%; top: 35%; left: 55%; animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+            50% { opacity: 0.7; box-shadow: 0 0 0 12px rgba(239,68,68,0); }
+        }
+
+        .problem-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 40px; }
+        .problem-card, .solution-card { padding: 32px; border-radius: 12px; border: 1px solid var(--border); backdrop-filter: blur(8px); }
+        .problem-card { background: rgba(254,242,242,0.9); border-color: #fecaca; }
+        .solution-card { background: rgba(236,253,245,0.9); border-color: #a7f3d0; }
+        .problem-card h3 { color: #dc2626; } .solution-card h3 { color: var(--green); }
+        .problem-card ul, .solution-card ul { list-style: none; margin-top: 12px; }
+        .problem-card li, .solution-card li { padding: 6px 0; font-size: 15px; color: var(--gray); }
+        .problem-card li::before { content: '✗ '; color: #dc2626; font-weight: 700; }
+        .solution-card li::before { content: '✓ '; color: var(--green); font-weight: 700; }
+
+        .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 40px; }
+        .step-card {
+            padding: 28px; border-radius: 12px; border: 1px solid var(--border);
+            background: rgba(255,255,255,0.9); backdrop-filter: blur(8px);
+            text-align: center; transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .step-card:hover { transform: translateY(-4px); box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
+        .step-num {
+            width: 40px; height: 40px; background: var(--blue); color: var(--white);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 18px; font-weight: 700; margin: 0 auto 16px;
+        }
+
+        .trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 40px; }
+        .trust-item { padding: 28px; border-radius: 12px; background: rgba(248,250,252,0.9); backdrop-filter: blur(8px); border: 1px solid var(--border); }
+        .trust-item h3 { color: var(--blue); margin-bottom: 12px; } .trust-item p { font-size: 14px; }
+
+        .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 40px; }
+        .stat-card { text-align: center; padding: 32px 20px; border-radius: 12px; background: rgba(232,240,254,0.9); backdrop-filter: blur(8px); border: 1px solid var(--border); }
+        .stat-number { font-size: 36px; font-weight: 700; color: var(--blue); }
+        .stat-label { font-size: 14px; color: var(--gray); margin-top: 4px; }
+
+        .testimonial-card {
+            max-width: 700px; margin: 32px auto 0; padding: 32px;
+            background: rgba(255,255,255,0.95); backdrop-filter: blur(8px);
+            border-radius: 12px; border-left: 4px solid var(--green);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .testimonial-card p { font-style: italic; font-size: 16px; color: var(--black); }
+        .testimonial-author { margin-top: 16px; font-size: 14px; color: var(--gray); font-style: normal; }
+
+        .form-section { background: var(--black); color: var(--white); }
+        .form-section h2 { color: var(--white); } .form-section p { color: #94a3b8; }
+        .form-wrapper { max-width: 500px; margin: 40px auto 0; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 14px; margin-bottom: 6px; color: #cbd5e1; }
+        .form-group input {
+            width: 100%; padding: 12px 16px; border: 1px solid #334155;
+            border-radius: 8px; background: #1e293b; color: var(--white);
+            font-family: 'Ubuntu', sans-serif; font-size: 15px; transition: border-color 0.3s;
+        }
+        .form-group input:focus { outline: none; border-color: var(--blue); }
+        .form-submit {
+            width: 100%; padding: 14px; background: var(--blue); color: var(--white);
+            border: none; border-radius: 8px; font-family: 'Ubuntu', sans-serif;
+            font-size: 16px; font-weight: 500; cursor: pointer; margin-top: 8px; transition: background 0.3s;
+        }
+        .form-submit:hover { background: #1240a8; }
+
+        footer { padding: 32px 0; background: #0f172a; text-align: center; }
+        footer p { color: #64748b; font-size: 13px; }
+
+        @media (max-width: 768px) {
+            .header-tabs { display: none; }
+            .problem-grid, .steps, .trust-grid, .stats-row { grid-template-columns: 1fr; }
+            section { padding: 50px 0; }
+            .hero { padding: 120px 0 50px; }
+            .slider-container { height: 250px; }
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="lava-canvas"></canvas>
+
+    <header>
+        <div class="container header-inner">
+            <a href="#" class="logo">Neuro<span>Scan</span></a>
+            <div class="header-tabs">
+                <button class="tab-btn active">Для государственных больниц</button>
+                <button class="tab-btn">Для частных центров</button>
+            </div>
+            <a href="#form" class="header-cta">Демо-доступ</a>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content fade-in">
+                <div class="text-island">
+                    <span class="hero-badge">Зарегистрированное медицинское изделие</span>
+                    <h1>Сократите время на описание снимков КТ и рентгена на 40% с помощью NeuroScan</h1>
+                    <p>Нейросеть «второго мнения», которая находит до 95% скрытых патологий и автоматически формирует черновик заключения для врача-рентгенолога.</p>
+                    <a href="#form" class="btn-primary">Получить демо-доступ на 14 дней</a>
+                    <span class="btn-note">Требуется подтверждение статуса клиники</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <div class="text-island" style="text-align:center;">
+                <h2 class="fade-in">Посмотрите разницу</h2>
+                <p class="fade-in" style="max-width:500px; margin:0 auto;">Сдвиньте ползунок: слева — обычный снимок, справа — тот же снимок с разметкой нейросети.</p>
+            </div>
+            <div class="slider-wrapper fade-in">
+		<div class="slider-container" id="sliderContainer">
+ 		   <!-- AFTER (верхний слой, обрезается clip-path) -->
+ 		   <div class="slider-img-after" id="afterImg">
+  		      <img src="xray-after.png" alt="Снимок с разметкой ИИ" class="slider-photo">
+  		      <span class="slider-label right">С NeuroScan</span>
+ 		   </div>
+		    <!-- BEFORE (нижний слой) -->
+		    <div class="slider-img-before">
+		        <img src="xray-before.png" alt="Обычный снимок" class="slider-photo">
+		        <span class="slider-label left">Без ИИ</span>
+		    </div>
+		    <div class="slider-handle" id="sliderHandle"></div>
+		    <input type="range" min="0" max="100" value="50" class="slider-input" id="sliderInput">
+		</div>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <div class="text-island" style="text-align:center;">
+                <h2 class="fade-in">Проблема и решение</h2>
+            </div>
+            <div class="problem-grid">
+                <div class="problem-card fade-in">
+                    <h3>Сейчас в клиниках</h3>
+                    <ul>
+                        <li>До 100 снимков на врача за смену</li>
+                        <li>«Замыливается» глаз — пропуск мелких патологий</li>
+                        <li>Пациенты ждут результат 2–3 дня</li>
+                        <li>Клиника теряет деньги из-за низкой пропускной способности</li>
+                    </ul>
+                </div>
+                <div class="solution-card fade-in">
+                    <h3>С NeuroScan</h3>
+                    <ul>
+                        <li>Первичный скрининг за 15 секунд</li>
+                        <li>Триггерные зоны подсвечены автоматически</li>
+                        <li>Черновик протокола готов сразу</li>
+                        <li>Пропускная способность отделения: +35%</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <div class="text-island" style="text-align:center;">
+                <h2 class="fade-in">Как это работает</h2>
+            </div>
+            <div class="steps">
+                <div class="step-card fade-in">
+                    <div class="step-num">1</div>
+                    <h3>Загрузка</h3>
+                    <p>Снимок из локальной PACS-системы клиники автоматически и зашифрованно отправляется в NeuroScan.</p>
+                </div>
+                <div class="step-card fade-in">
+                    <div class="step-num">2</div>
+                    <h3>Анализ</h3>
+                    <p>Нейросеть обрабатывает кадр, сверяясь с базой из 5 000 000+ верифицированных клинических случаев.</p>
+                </div>
+                <div class="step-card fade-in">
+                    <div class="step-num">3</div>
+                    <h3>Результат</h3>
+                    <p>Врач видит тепловую карту вероятности патологий и готовый текст для протокола в привычном интерфейсе.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <div class="text-island" style="text-align:center;">
+                <h2 class="fade-in">Доверие. Точность. Безопасность.</h2>
+            </div>
+            <div class="trust-grid">
+                <div class="trust-item fade-in">
+                    <h3>Точность</h3>
+                    <p>Чувствительность алгоритмов — 94,8%, специфичность — 92,1%. Подтверждено клиническими испытаниями на базе региональных медицинских центров.</p>
+                </div>
+                <div class="trust-item fade-in">
+                    <h3>Безопасность данных</h3>
+                    <p>Интеграция по закрытому контуру VPN. Соответствие ФЗ-152 (персональные данные). Серверы на территории РФ.</p>
+                </div>
+                <div class="trust-item fade-in">
+                    <h3>Лицензии</h3>
+                    <p>Регистрационное удостоверение (РУ) Росздравнадзора как медицинского изделия. Полное соответствие требованиям регулятора.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <div class="text-island" style="text-align:center;">
+                <h2 class="fade-in">Экономика для руководителя клиники</h2>
+            </div>
+            <div class="stats-row">
+                <div class="stat-card fade-in">
+                    <div class="stat-number">+35%</div>
+                    <div class="stat-label">Пропускная способность отделения</div>
+                </div>
+                <div class="stat-card fade-in">
+                    <div class="stat-number">×2,5</div>
+                    <div class="stat-label">Снижение риска врачебной ошибки</div>
+                </div>
+                <div class="stat-card fade-in">
+                    <div class="stat-number">3 мес.</div>
+                    <div class="stat-label">Срок окупаемости внедрения</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <div class="text-island" style="text-align:center;">
+                <h2 class="fade-in">Опыт внедрения</h2>
+            </div>
+            <div class="testimonial-card fade-in">
+                <p>«Внедрение NeuroScan в нашей сети клиник позволило сократить время выдачи заключений по КТ лёгких с 40 до 18 минут. За 3 месяца система помогла выявить 12 ранних стадий онкологии, которые пропустил бы уставший персонал в ночную смену.»</p>
+                <div class="testimonial-author">— Заведующий отделением лучевой диагностики, сеть клиник «МедЛайф»</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="form-section" id="form">
+        <div class="container">
+            <div class="text-island" style="background: rgba(15, 23, 42, 0.9); text-align:center;">
+                <h2 class="fade-in" style="color: var(--white);">Закажите персональную онлайн-демонстрацию для вашей клиники</h2>
+                <p class="fade-in" style="color: #94a3b8;">Покажем систему в действии на ваших реальных кейсах. Без обязательств.</p>
+            </div>
+            <div class="form-wrapper fade-in">
+                <form onsubmit="handleSubmit(event)">
+                    <div class="form-group"><label>Имя</label><input type="text" placeholder="Иван Петров" required></div>
+                    <div class="form-group"><label>Телефон</label><input type="tel" placeholder="+7 (___) ___-__-__" required></div>
+                    <div class="form-group"><label>Название клиники / Должность</label><input type="text" placeholder="ГБУЗ МО, Главный врач" required></div>
+                    <div class="form-group"><label>Корпоративный Email</label><input type="email" placeholder="info@clinic.ru" required></div>
+                    <button type="submit" class="form-submit">Посмотреть систему в действии</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>NeuroScan — AI-ассистент врача-рентгенолога. ИИ не ставит диагноз, а работает как «второе мнение». © 2026</p>
+        </div>
+    </footer>
+
+    <script>
+    const LAVA_CFG = {
+        balls: 6,
+        ballSize: 25,
+        speed: 1.0,
+        cell: 15,
+        fps: 90,
+        color1: [26, 86, 219],
+        color2: [13, 148, 136],
+        bgOpacity: 0.15,
+    };
+
+    const LEVELS = 10;
+
+    function lerp(a, b, t) {
+        return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+    }
+
+    class LavaBg {
+        constructor(canvas, cfg) {
+            this.canvas = canvas;
+            this.ctx = canvas.getContext('2d', { alpha: true });
+            this.cfg = cfg;
+            this.balls = [];
+            this.palette = [];
+            this.lastT = 0;
+            this.dead = false;
+
+            this.buildPalette();
+            this.makeBalls();
+            this.resize();
+
+            window.addEventListener('resize', () => this.resize());
+
+            const interval = 1000 / cfg.fps;
+            const loop = () => {
+                if (this.dead) return;
+                const now = performance.now();
+                const dt = Math.min(0.25, (now - this.lastT) / 1000);
+                this.lastT = now;
+                this.step(dt);
+                this.render();
+                setTimeout(() => requestAnimationFrame(loop), interval - (performance.now() - now));
+            };
+            this.lastT = performance.now();
+            requestAnimationFrame(loop);
+        }
+
+        buildPalette() {
+            this.palette = [];
+            const c1 = this.cfg.color1, c2 = this.cfg.color2;
+            for (let l = 0; l <= LEVELS; l++) {
+                const v = l / LEVELS;
+                const t = Math.max(0, (v - 0.72) / 0.28);
+                const rgb = lerp(c1, c2, t);
+                const alpha = (0.18 + 0.82 * v) * this.cfg.bgOpacity * 4;
+                this.palette.push({ r: rgb[0], g: rgb[1], b: rgb[2], a: Math.min(1, alpha) });
+            }
+        }
+
+        makeBalls() {
+            const n = Math.max(1, this.cfg.balls);
+            const k = this.cfg.speed / 4;
+            this.balls = [];
+            for (let i = 0; i < n; i++) {
+                const a = Math.random() * Math.PI * 2;
+                const sp = (0.05 + Math.random() * 0.07) * k;
+                this.balls.push({
+                    x: Math.random(), y: Math.random(),
+                    vx: Math.cos(a) * sp * 0.6, vy: Math.sin(a) * sp,
+                    r: 0.7 + Math.random() * 0.6,
+                });
+            }
+        }
+
+        resize() {
+            const cell = this.cfg.cell;
+            this.resW = Math.max(20, Math.ceil(window.innerWidth / cell));
+            this.resH = Math.max(20, Math.ceil(window.innerHeight / cell));
+            this.canvas.width = this.resW;
+            this.canvas.height = this.resH;
+        }
+
+        step(dt) {
+            for (let b of this.balls) {
+                b.x += b.vx * dt;
+                b.y += b.vy * dt;
+                if (b.x < 0) { b.x = 0; b.vx = Math.abs(b.vx); }
+                if (b.x > 1) { b.x = 1; b.vx = -Math.abs(b.vx); }
+                if (b.y < 0) { b.y = 0; b.vy = Math.abs(b.vy); }
+                if (b.y > 1) { b.y = 1; b.vy = -Math.abs(b.vy); }
+            }
+        }
+
+        render() {
+            const { ctx, resW: w, resH: h, balls, palette, cfg } = this;
+            ctx.clearRect(0, 0, w, h);
+
+            const R = (cfg.ballSize / 100) * Math.min(w, h);
+            const bx = balls.map(b => b.x * w);
+            const by = balls.map(b => b.y * h);
+            const r2 = balls.map(b => (b.r * R) * (b.r * R));
+            const n = balls.length;
+
+            const level = (cx, cy) => {
+                let f = 0;
+                for (let i = 0; i < n; i++) {
+                    const dx = cx - bx[i], dy = cy - by[i];
+                    f += r2[i] / (dx * dx + dy * dy + 1);
+                }
+                if (f < 0.72) return 0;
+                let v;
+                if (f < 1) v = 0.12 + 0.18 * (f - 0.72) / 0.28;
+                else v = 0.45 + 0.55 * Math.min(1, (f - 1) / 1.5);
+                return Math.max(1, Math.round(v * LEVELS));
+            };
+
+            for (let row = 0; row < h; row++) {
+                const cy = row + 0.5;
+                let runLv = 0, runStart = 0;
+                for (let col = 0; col <= w; col++) {
+                    const lv = col < w ? level(col + 0.5, cy) : -1;
+                    if (lv !== runLv) {
+                        if (runLv > 0 && col > runStart) {
+                            const p = palette[runLv];
+                            ctx.fillStyle = `rgba(${p.r|0},${p.g|0},${p.b|0},${p.a.toFixed(3)})`;
+                            ctx.fillRect(runStart, row, col - runStart, 1);
+                        }
+                        runLv = lv;
+                        runStart = col;
+                    }
+                }
+            }
+        }
+    }
+
+    window.lava = new LavaBg(document.getElementById('lava-canvas'), LAVA_CFG);
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) entry.target.classList.add('visible');
+        });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+    const sliderInput = document.getElementById('sliderInput');
+    const afterImg = document.getElementById('afterImg');
+    const sliderHandle = document.getElementById('sliderHandle');
+    sliderInput.addEventListener('input', (e) => {
+        const val = e.target.value;
+        afterImg.style.clipPath = `inset(0 ${100 - val}% 0 0)`;
+        sliderHandle.style.left = val + '%';
+    });
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        });
+    });
+
+    function handleSubmit(e) {
+        e.preventDefault();
+        alert('Спасибо! Ваша заявка принята. Мы свяжемся с вами в течение 24 часов.');
+    }
+    </script>
+</body>
+</html>
